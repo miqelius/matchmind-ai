@@ -1,8 +1,8 @@
 import asyncio
 import httpx
-import random
 from datetime import datetime, timezone
 from fastapi import APIRouter
+from engines.predictor import predictor
 
 router = APIRouter(tags=["Sports"])
 
@@ -30,7 +30,6 @@ async def fetch_football(client):
     finished_list = []
     for league in TOP_LEAGUES:
         try:
-            # 1. მომავალი მატჩები
             url_next = f"https://www.thesportsdb.com/api/v1/json/3/eventsnextleague.php?id={league['id']}"
             r_next = await client.get(url_next, timeout=8.0)
             if r_next.status_code == 200:
@@ -38,8 +37,9 @@ async def fetch_football(client):
                 for e in events[:3]:
                     home = e.get("strHomeTeam") or "Team A"
                     away = e.get("strAwayTeam") or "Team B"
-                    p_home = random.randint(40, 60)
-                    p_away = 100 - p_home
+                    
+                    pred = predictor.predict_match(home_form=2.5, away_form=1.8, h2h=1.1)
+                    
                     upcoming_list.append({
                         "home": home,
                         "away": away,
@@ -47,14 +47,13 @@ async def fetch_football(client):
                         "date": e.get("dateEvent", "TBD"),
                         "time": e.get("strTime", "00:00"),
                         "status": "upcoming",
-                        "home_prob": p_home,
-                        "away_prob": p_away,
-                        "home_odd": round(100 / p_home * 1.05, 2),
-                        "away_odd": round(100 / p_away * 1.05, 2),
+                        "home_prob": pred["home_prob"],
+                        "away_prob": pred["away_prob"],
+                        "home_odd": pred["home_odd"],
+                        "away_odd": pred["away_odd"],
                         "score": "vs"
                     })
 
-            # 2. ბოლო ჩატარებული შედეგები (უკანასკნელი ტური)
             url_past = f"https://www.thesportsdb.com/api/v1/json/3/eventspastleague.php?id={league['id']}"
             r_past = await client.get(url_past, timeout=8.0)
             if r_past.status_code == 200:
@@ -98,6 +97,8 @@ async def fetch_ufc(client):
                 fa = fight.get("fighter_a", {}).get("name", "Fighter 1")
                 fb = fight.get("fighter_b", {}).get("name", "Fighter 2")
                 
+                pred = predictor.predict_match(home_form=2.2, away_form=2.0, h2h=1.0)
+                
                 item = {
                     "event": event_name,
                     "fighter_a": fa,
@@ -105,10 +106,10 @@ async def fetch_ufc(client):
                     "date": date,
                     "time": "22:00",
                     "status": "finished" if is_finished else "upcoming",
-                    "home_prob": 52,
-                    "away_prob": 48,
-                    "home_odd": 1.85,
-                    "away_odd": 1.95,
+                    "home_prob": pred["home_prob"],
+                    "away_prob": pred["away_prob"],
+                    "home_odd": pred["home_odd"],
+                    "away_odd": pred["away_odd"],
                     "score": fight.get("result", "VS") if is_finished else "VS"
                 }
                 if is_finished:
