@@ -1,20 +1,27 @@
+import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
-from routers.automation import router as automation_router
-from routers.copilot import router as copilot_router
-from routers.market import router as market_router
-from routers.real_estate import router as real_estate_router
-from routers.sports import router as sports_router
-from routers.weather import router as weather_router
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from routers.sports import router as sports_router, update_sports_data_periodically
+import os
 
-app = FastAPI(title="Archbot API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # აპლიკაციის სტარტზე ფონური ამოცანის გაშვება, რომელიც მონაცემებს ქაჩავს
+    bg_task = asyncio.create_task(update_sports_data_periodically())
+    yield
+    bg_task.cancel()
 
-@app.get("/api/system/status")
-async def system_status():
-    return {"status": "operational", "cpu": "Normal", "memory": "Optimal", "database": "Connected"}
+app = FastAPI(
+    title="MatchMind AI - Sports Intelligence API",
+    description="Professional sports analytics, predictive modeling, and live data intelligence platform.",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
-
+# CORS კონფიგურაცია
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,63 +30,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-async def root():
-    return {"status": "operational", "service": "Archbot API"}
+# სტატიკური ფაილების მიბმა
+if os.path.exists("static"):
+    app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# HTML გვერდების მხარდაჭერა ორივე ვარიანტზე (/dashboard და dashboard.html)
-@app.get("/dashboard", response_class=HTMLResponse)
-@app.get("/dashboard.html", response_class=HTMLResponse)
-async def serve_dashboard():
-    with open("dashboard.html", "r", encoding="utf-8") as f:
-        return f.read()
-
-@app.get("/app", response_class=HTMLResponse)
-@app.get("/index.html", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse)
 async def serve_index():
-    with open("index.html", "r", encoding="utf-8") as f:
-        return f.read()
+    index_path = os.path.join("static", "index.html")
+    if os.path.exists(index_path):
+        with open(index_path, "r", encoding="utf-8") as f:
+            return f.read()
+    return {"status": "operational", "service": "MatchMind AI API"}
 
-# ფრონტენდის მისამართების ფოლბექები (404-ების თავიდან ასაცილებლად)
-@app.get("/api/listings")
-async def fallback_listings():
-    return {"status": "success", "data": [], "message": "Use real-estate search endpoint"}
-
-@app.post("/api/automation/run")
-async def fallback_automation_run():
-    return {"status": "success", "message": "Automation task received"}
-
-app.include_router(sports_router, prefix="/api/sports", tags=["Sports"])
-@app.get("/api/market")
-async def fallback_market():
-    return {"status": "success", "message": "Market API active"}
-
-app.include_router(market_router, prefix="/api/market", tags=["Market"])
-app.include_router(real_estate_router, prefix="/api/listings", tags=["Listings"])
-app.include_router(weather_router, prefix="/api/weather", tags=["Weather"])
-app.include_router(copilot_router, prefix="/api/copilot", tags=["Copilot"])
-app.include_router(automation_router, prefix="/api/automation", tags=["Automation"])
-
-
-
-
-
-@app.get("/api/sports/live", tags=["Sports"])
-def get_live_sports():
+@app.get("/api/system/status")
+async def system_status():
     return {
-        "status": "success",
-        "data": {
-            "football": [
-                {"home": "Real Madrid", "away": "FC Barcelona", "score": "2 : 1", "status": "65'", "league": "La Liga"},
-                {"home": "Arsenal FC", "away": "Manchester City", "score": "1 : 1", "status": "HT", "league": "Premier League"}
-            ],
-            "ufc": [
-                {"event": "UFC 319 • Main Event", "fighter_a": "Islam Makhachev", "fighter_b": "Arman Tsarukyan", "prob_a": 58, "prob_b": 42, "weight": "Lightweight Title", "status": "UPCOMING"},
-                {"event": "UFC Fight Night", "fighter_a": "Max Holloway", "fighter_b": "Justin Gaethje", "prob_a": 52, "prob_b": 48, "weight": "Bmf / Lightweight", "status": "UPCOMING"}
-            ],
-            "f1": [
-                {"pos": 1, "driver": "Max Verstappen", "team": "Red Bull", "time": "Winner", "pts": 292},
-                {"pos": 2, "driver": "Lando Norris", "team": "McLaren", "time": "+4.3s", "pts": 265}
-            ]
-        }
+        "status": "operational", 
+        "service": "MatchMind AI",
+        "cpu": "Normal", 
+        "memory": "Optimal", 
+        "database": "Connected"
     }
+
+# სპორტული როუტერის მიერთება
+app.include_router(sports_router, prefix="/api/sports", tags=["Sports Intelligence"])
