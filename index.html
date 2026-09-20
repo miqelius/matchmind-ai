@@ -1,42 +1,41 @@
 <!DOCTYPE html>
-<html lang="ka" class="dark">
+<html lang="ka">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MatchMind AI Hub</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>body { font-family: 'Inter', sans-serif; }</style>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen p-6">
-    <div class="max-w-6xl mx-auto">
-        <!-- Header -->
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
+    <div class="max-w-6xl mx-auto px-4 py-8">
         <header class="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
             <div>
-                <h1 class="text-xl font-bold tracking-tight text-slate-100">MatchMind AI Hub</h1>
-                <p class="text-xs text-slate-400 mt-0.5">სპორტული ანალიტიკა და კოეფიციენტების მონიტორინგი</p>
+                <h1 class="text-3xl font-extrabold tracking-tight text-white">MatchMind AI Hub</h1>
+                <p class="text-slate-400 text-sm mt-1">სპორტული ანალიტიკა და კოეფიციენტების მონიტორინგი (AI Powered)</p>
             </div>
-            <div id="status-badge" class="text-xs px-3 py-1 bg-emerald-950/60 text-emerald-400 rounded-full border border-emerald-800/50 flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Live Sync
+            <div class="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-full border border-slate-800">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span id="sync-status" class="text-xs font-medium text-emerald-400">Live Sync Active</span>
             </div>
         </header>
 
-        <!-- Sports Category Tabs -->
-        <div class="flex gap-3 mb-6 overflow-x-auto pb-2">
-            <button onclick="setSport('football')" id="tab-football" class="px-4 py-2 rounded-xl text-sm font-medium bg-blue-600 text-white transition shadow-sm">ფეხბურთი</button>
-            <button onclick="setSport('ufc')" id="tab-ufc" class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-900 text-slate-400 hover:bg-slate-800 transition">UFC / MMA</button>
-            <button onclick="setSport('f1')" id="tab-f1" class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-900 text-slate-400 hover:bg-slate-800 transition">Formula 1</button>
+        <!-- Sport Navigation -->
+        <div class="flex gap-3 mb-6">
+            <button onclick="setSport('football')" id="btn-football" class="sport-tab px-5 py-2.5 rounded-xl font-semibold text-sm transition bg-blue-600 text-white shadow-lg shadow-blue-600/30">ფეხბურთი</button>
+            <button onclick="setSport('ufc')" id="btn-ufc" class="sport-tab px-5 py-2.5 rounded-xl font-semibold text-sm transition bg-slate-900 text-slate-400 hover:text-white border border-slate-800">UFC / MMA</button>
+            <button onclick="setSport('f1')" id="btn-f1" class="sport-tab px-5 py-2.5 rounded-xl font-semibold text-sm transition bg-slate-900 text-slate-400 hover:text-white border border-slate-800">Formula 1</button>
         </div>
 
-        <!-- Sub-status Tabs -->
-        <div class="flex gap-2 mb-6 border-b border-slate-900 pb-4">
-            <button onclick="setStatus('upcoming')" id="sub-upcoming" class="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-white transition">მომავალი</button>
-            <button onclick="setStatus('live')" id="sub-live" class="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900 text-slate-400 hover:bg-slate-800 transition">ლაივი</button>
-            <button onclick="setStatus('finished')" id="sub-finished" class="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900 text-slate-400 hover:bg-slate-800 transition">დასრულებული</button>
+        <!-- Status Filter (For Football / UFC) -->
+        <div id="status-filters" class="flex gap-2 mb-6">
+            <button onclick="setStatus('upcoming')" id="status-upcoming" class="status-tab px-4 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-white transition">მომავალი</button>
+            <button onclick="setStatus('live')" id="status-live" class="status-tab px-4 py-1.5 rounded-lg text-xs font-medium bg-slate-900 text-slate-400 hover:text-white transition">ლაივი</button>
+            <button onclick="setStatus('finished')" id="status-finished" class="status-tab px-4 py-1.5 rounded-lg text-xs font-medium bg-slate-900 text-slate-400 hover:text-white transition">დასრულებული</button>
         </div>
 
-        <!-- Content Container -->
-        <div id="content-area" class="space-y-3">
-            <div class="text-center py-16 text-slate-500 text-sm animate-pulse">მონაცემები იტვირთება...</div>
+        <!-- Data Container -->
+        <div id="content-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Dynamic Cards will render here -->
         </div>
     </div>
 
@@ -45,114 +44,120 @@
         let currentStatus = 'upcoming';
         let globalData = null;
 
-        async function loadData() {
+        async function fetchData() {
             try {
-                let res = await fetch('/api/sports/live');
-                let json = await res.json();
-                if(json.status === 'success') {
+                const res = await fetch('/api/sports/live');
+                const json = await res.json();
+                if (json.status === 'success') {
                     globalData = json.data;
                     render();
                 }
-            } catch(e) {
-                console.error("Fetch error:", e);
+            } catch (err) {
+                console.error("Error fetching live data:", err);
             }
         }
 
         function setSport(sport) {
             currentSport = sport;
-            ['football', 'ufc', 'f1'].forEach(s => {
-                let btn = document.getElementById(`tab-${s}`);
-                if(s === sport) {
-                    btn.className = "px-4 py-2 rounded-xl text-sm font-medium bg-blue-600 text-white transition shadow-sm";
-                } else {
-                    btn.className = "px-4 py-2 rounded-xl text-sm font-medium bg-slate-900 text-slate-400 hover:bg-slate-800 transition";
-                }
+            document.querySelectorAll('.sport-tab').forEach(b => {
+                b.className = "sport-tab px-5 py-2.5 rounded-xl font-semibold text-sm transition bg-slate-900 text-slate-400 hover:text-white border border-slate-800";
             });
+            document.getElementById(`btn-${sport}`).className = "sport-tab px-5 py-2.5 rounded-xl font-semibold text-sm transition bg-blue-600 text-white shadow-lg shadow-blue-600/30";
+            
+            const sf = document.getElementById('status-filters');
+            sf.style.display = sport === 'f1' ? 'none' : 'flex';
             render();
         }
 
         function setStatus(status) {
             currentStatus = status;
-            ['upcoming', 'live', 'finished'].forEach(s => {
-                let btn = document.getElementById(`sub-${s}`);
-                if(btn) {
-                    if(s === status) {
-                        btn.className = "px-3.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-white transition";
-                    } else {
-                        btn.className = "px-3.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900 text-slate-400 hover:bg-slate-800 transition";
-                    }
-                }
+            document.querySelectorAll('.status-tab').forEach(b => {
+                b.className = "status-tab px-4 py-1.5 rounded-lg text-xs font-medium bg-slate-900 text-slate-400 hover:text-white transition";
             });
+            document.getElementById(`status-${status}`).className = "status-tab px-4 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-white transition";
             render();
         }
 
         function render() {
-            let container = document.getElementById('content-area');
-            if(!globalData) return;
+            const container = document.getElementById('content-container');
+            container.innerHTML = '';
 
-            if(currentSport === 'f1') {
-                let f1List = globalData.f1 || [];
-                if(f1List.length === 0) {
-                    container.innerHTML = `<div class="p-6 bg-slate-900/40 rounded-xl border border-slate-900 text-center text-slate-500 text-sm">მონაცემები არ არის.</div>`;
+            if (!globalData) {
+                container.innerHTML = '<div class="col-span-2 text-center py-12 text-slate-500">ინფორმაცია იტვირთება...</div>';
+                return;
+            }
+
+            if (currentSport === 'f1') {
+                const f1List = globalData.f1 || [];
+                if (f1List.length === 0) {
+                    container.innerHTML = '<div class="col-span-2 text-center py-12 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800/60">ინფორმაცია არ მოიძებნა.</div>';
                     return;
                 }
-                container.innerHTML = f1List.map(item => `
-                    <div class="p-4 bg-slate-900/40 rounded-xl border border-slate-900 flex justify-between items-center">
-                        <div>
-                            <span class="text-[10px] px-2 py-0.5 bg-slate-800 text-slate-300 rounded">${item.circuit}</span>
-                            <h3 class="font-medium mt-1.5 text-sm">${item.driver}</h3>
-                            <p class="text-xs text-slate-500 mt-0.5">${item.team}</p>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-[10px] text-slate-500 block">პოზიცია</span>
-                            <span class="text-lg font-bold text-amber-400">P${item.pos}</span>
-                        </div>
-                    </div>
-                `).join('');
-                return;
-            }
-
-            let sportObj = globalData[currentSport];
-            let list = sportObj ? (sportObj[currentStatus] || []) : [];
-
-            if(list.length === 0) {
-                container.innerHTML = `<div class="p-6 bg-slate-900/40 rounded-xl border border-slate-900 text-center text-slate-500 text-sm">ინფორმაცია არ მოიძებნა.</div>`;
-                return;
-            }
-
-            container.innerHTML = list.map(item => {
-                let badgeText = currentSport === 'ufc' ? item.event : (item.league || 'Match');
-                let sideA = currentSport === 'ufc' ? item.fighter_a : item.home;
-                let sideB = currentSport === 'ufc' ? item.fighter_b : item.away;
-                let scoreDisplay = item.score || (currentStatus === 'finished' ? 'FT' : 'VS');
-
-                return `
-                    <div class="p-4 bg-slate-900/40 rounded-xl border border-slate-900 flex flex-col md:flex-row justify-between items-center gap-4 hover:border-slate-800 transition">
-                        <div class="w-full md:w-1/4">
-                            <span class="text-[10px] px-2 py-0.5 bg-slate-800/80 text-slate-300 rounded border border-slate-800">${badgeText}</span>
-                            <div class="text-[11px] text-slate-500 mt-1.5">${item.date || ''} ${item.time || ''}</div>
-                        </div>
-                        
-                        <div class="flex items-center gap-3 font-medium text-sm md:text-base w-full md:w-2/4 justify-center text-center">
-                            <span class="flex-1 text-right truncate text-slate-200">${sideA}</span>
-                            <span class="px-3 py-1 bg-slate-950 text-amber-400 text-xs rounded-lg border border-slate-900 font-bold">${scoreDisplay}</span>
-                            <span class="flex-1 text-left truncate text-slate-200">${sideB}</span>
-                        </div>
-
-                        <div class="w-full md:w-1/4 text-right">
-                            <div class="text-[11px] font-medium text-slate-400">
-                                <span class="text-slate-200">${item.home_prob}%</span> <span class="text-amber-400 font-bold">[${item.home_odd}]</span> 
-                                <span class="text-slate-700 mx-1">/</span> 
-                                <span class="text-slate-200">${item.away_prob}%</span> <span class="text-amber-400 font-bold">[${item.away_odd}]</span>
+                f1List.forEach(item => {
+                    container.innerHTML += `
+                        <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex justify-between items-center">
+                            <div>
+                                <span class="text-xs text-blue-400 font-semibold uppercase tracking-wider">${item.session || 'F1 Session'} (${item.circuit || ''})</span>
+                                <h3 class="text-lg font-bold text-white mt-1">#${item.pos} - ${item.driver}</h3>
+                                <p class="text-slate-400 text-xs">${item.team}</p>
                             </div>
                         </div>
-                    </div>
-                `;
-            }).join('');
+                    `;
+                });
+                return;
+            }
+
+            const sportData = globalData[currentSport] || { live: [], upcoming: [], finished: [] };
+            const list = sportData[currentStatus] || [];
+
+            if (list.length === 0) {
+                container.innerHTML = '<div class="col-span-2 text-center py-12 text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-800/60">ინფორმაცია არ მოიძებნა.</div>';
+                return;
+            }
+
+            list.forEach(match => {
+                if (currentSport === 'football') {
+                    container.innerHTML += `
+                        <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                            <div class="flex justify-between items-center text-xs text-slate-400 mb-3">
+                                <span class="bg-slate-800 px-2.5 py-1 rounded-md text-slate-300 font-medium">${match.league}</span>
+                                <span>${match.date} ${match.time}</span>
+                            </div>
+                            <div class="flex justify-between items-center my-4 font-bold text-lg text-white">
+                                <span class="w-2/5 text-left truncate">${match.home}</span>
+                                <span class="text-slate-500 text-sm font-normal">VS</span>
+                                <span class="w-2/5 text-right truncate">${match.away}</span>
+                            </div>
+                            <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center text-xs">
+                                <div class="text-slate-400">პროგნოზი (AI): <span class="text-emerald-400 font-bold">${(match.home_prob * 100).toFixed(0)}% / ${(match.away_prob * 100).toFixed(0)}%</span></div>
+                                <div class="bg-slate-800/80 px-2 py-1 rounded text-slate-300">კუშები: ${match.home_odd} / ${match.away_odd}</div>
+                            </div>
+                        </div>
+                    `;
+                } else if (currentSport === 'ufc') {
+                    container.innerHTML += `
+                        <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                            <div class="flex justify-between items-center text-xs text-slate-400 mb-3">
+                                <span class="bg-slate-800 px-2.5 py-1 rounded-md text-slate-300 font-medium">${match.event}</span>
+                                <span>${match.date}</span>
+                            </div>
+                            <div class="flex justify-between items-center my-4 font-bold text-base text-white">
+                                <span class="w-2/5 text-left">${match.fighter_a}</span>
+                                <span class="text-slate-500 text-xs font-normal">VS</span>
+                                <span class="w-2/5 text-right">${match.fighter_b}</span>
+                            </div>
+                            <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center text-xs">
+                                <div class="text-slate-400">შანსი: <span class="text-emerald-400 font-bold">${(match.home_prob * 100).toFixed(0)}% / ${(match.away_prob * 100).toFixed(0)}%</span></div>
+                                <div class="bg-slate-800/80 px-2 py-1 rounded text-slate-300">კუში: ${match.home_odd} / ${match.away_odd}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
         }
 
-        loadData();
-        setInterval(loadData, 20000);
+        fetchData();
+        setInterval(fetchData, 10000);
     </script>
 </body>
 </html>

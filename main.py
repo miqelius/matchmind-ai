@@ -1,27 +1,14 @@
 import asyncio
-from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
+from dotenv import load_dotenv
 from routers.sports import router as sports_router, update_sports_data_periodically
-import os
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # აპლიკაციის სტარტზე ფონური ამოცანის გაშვება, რომელიც მონაცემებს ქაჩავს
-    bg_task = asyncio.create_task(update_sports_data_periodically())
-    yield
-    bg_task.cancel()
+load_dotenv()
 
-app = FastAPI(
-    title="MatchMind AI - Sports Intelligence API",
-    description="Professional sports analytics, predictive modeling, and live data intelligence platform.",
-    version="1.0.0",
-    lifespan=lifespan
-)
+app = FastAPI(title="MatchMind AI Hub", version="1.0.0")
 
-# CORS კონფიგურაცია
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -30,27 +17,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# სტატიკური ფაილების მიბმა
-if os.path.exists("static"):
-    app.mount("/static", StaticFiles(directory="static"), name="static")
+app.include_router(sports_router, prefix="/api/sports")
 
-@app.get("/", response_class=HTMLResponse)
-async def serve_index():
-    index_path = os.path.join("static", "index.html")
-    if os.path.exists(index_path):
-        with open(index_path, "r", encoding="utf-8") as f:
-            return f.read()
-    return {"status": "operational", "service": "MatchMind AI API"}
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(update_sports_data_periodically())
 
-@app.get("/api/system/status")
-async def system_status():
-    return {
-        "status": "operational", 
-        "service": "MatchMind AI",
-        "cpu": "Normal", 
-        "memory": "Optimal", 
-        "database": "Connected"
-    }
-
-# სპორტული როუტერის მიერთება
-app.include_router(sports_router, prefix="/api/sports", tags=["Sports Intelligence"])
+@app.get("/")
+def read_root():
+    return FileResponse("index.html")
